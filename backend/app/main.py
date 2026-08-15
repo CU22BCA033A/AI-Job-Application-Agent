@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import jobs, profile
+from app.routers import applications, documents, jobs, profile
 
 settings = get_settings()
 
@@ -39,3 +39,5 @@ def health():
 
 app.include_router(profile.router)
 app.include_router(jobs.router)
+app.include_router(documents.router)
+app.include_router(applications.router)

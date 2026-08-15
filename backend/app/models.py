@@ -31,6 +31,7 @@ class FitRecommendation(str, enum.Enum):
 class DocumentType(str, enum.Enum):
     RESUME = "resume"
     COVER_LETTER = "cover_letter"
+    INTERVIEW_PREP = "interview_prep"
 
 
 class DocumentStatus(str, enum.Enum):

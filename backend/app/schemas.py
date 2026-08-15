@@ -152,3 +152,65 @@ class DocumentOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DocumentUpdate(BaseModel):
+    content: dict | None = None
+    status: DocumentStatus | None = None
+
+
+# ---------- Application tracking ----------
+
+
+class ApplicationOut(BaseModel):
+    id: str
+    job_id: str
+    submitted_at: datetime | None
+    last_followup_at: datetime | None
+    notes: str
+    created_at: datetime
+    updated_at: datetime
+    needs_followup: bool = False  # computed: submitted, no response, >=10 days since last touch
+
+    model_config = {"from_attributes": True}
+
+
+class ApplicationNotesUpdate(BaseModel):
+    notes: str
+
+
+class AnalyticsOut(BaseModel):
+    total_jobs: int
+    applications_sent: int
+    interviewing: int
+    closed: int
+    response_rate: float  # (interviewing + closed reached via response) / applications_sent
+    interview_rate: float  # interviewing / applications_sent
+    needs_followup: int
+
+
+# ---------- Interview prep ----------
+
+
+class InterviewQuestion(BaseModel):
+    question: str
+    category: str
+    why_likely: str
+
+
+class StoryBankEntry(BaseModel):
+    title: str
+    relevant_for: list[str] = Field(default_factory=list)
+    situation: str
+    task: str
+    action: str
+    result: str
+    grounded_in: str
+
+
+class InterviewPrepOut(BaseModel):
+    id: str
+    job_id: str
+    questions: list[InterviewQuestion]
+    story_bank: list[StoryBankEntry]
+    created_at: datetime

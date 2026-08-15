@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -74,6 +76,18 @@ def evaluate_job(job_id: str, db: Session = Depends(get_db)):
 def update_job_status(job_id: str, payload: schemas.JobStatusUpdate, db: Session = Depends(get_db)):
     job = _get_job_or_404(job_id, db)
     job.status = payload.status
+
+    # Moving a job to Submitted starts its application record — this is the
+    # only place submitted_at gets set, so the follow-up clock always starts
+    # from when you actually marked it sent, not from some other action.
+    if payload.status == models.JobStatus.SUBMITTED:
+        application = db.query(models.Application).filter_by(job_id=job.id).first()
+        if application is None:
+            application = models.Application(job_id=job.id)
+            db.add(application)
+        if application.submitted_at is None:
+            application.submitted_at = datetime.utcnow()
+
     db.commit()
     db.refresh(job)
     return job

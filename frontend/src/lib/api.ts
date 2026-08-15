@@ -6,8 +6,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`${options?.method ?? "GET"} ${path} failed (${res.status}): ${body}`);
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `${options?.method ?? "GET"} ${path} failed (${res.status}).`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -107,6 +107,91 @@ export interface Job {
   updated_at: string;
 }
 
+export type DocumentType = "resume" | "cover_letter" | "interview_prep";
+export type DocumentStatus = "drafted" | "reviewed" | "flagged" | "approved";
+
+export interface ReviewNote {
+  severity: "error" | "warning" | "info";
+  message: string;
+}
+
+export interface TailoredResumeContent {
+  summary: string;
+  work_history: {
+    company: string;
+    title: string;
+    location?: string;
+    start_date?: string;
+    end_date?: string;
+    current?: boolean;
+    bullets: string[];
+  }[];
+  skills_highlighted: string[];
+}
+
+export interface CoverLetterContent {
+  greeting: string;
+  paragraphs: string[];
+  closing: string;
+}
+
+export interface GeneratedDocument {
+  id: string;
+  job_id: string;
+  doc_type: DocumentType;
+  version: number;
+  content: TailoredResumeContent | CoverLetterContent | Record<string, unknown>;
+  status: DocumentStatus;
+  review_notes: ReviewNote[];
+  review_passed: boolean | null;
+  created_at: string;
+}
+
+export interface InterviewQuestion {
+  question: string;
+  category: string;
+  why_likely: string;
+}
+
+export interface StoryBankEntry {
+  title: string;
+  relevant_for: string[];
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+  grounded_in: string;
+}
+
+export interface InterviewPrep {
+  id: string;
+  job_id: string;
+  questions: InterviewQuestion[];
+  story_bank: StoryBankEntry[];
+  created_at: string;
+}
+
+export interface Application {
+  id: string;
+  job_id: string;
+  submitted_at: string | null;
+  last_followup_at: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  needs_followup: boolean;
+}
+
+export interface Analytics {
+  total_jobs: number;
+  applications_sent: number;
+  interviewing: number;
+  closed: number;
+  response_rate: number;
+  interview_rate: number;
+  needs_followup: number;
+}
+
 // ---------- API calls ----------
 
 export const api = {
@@ -139,4 +224,32 @@ export const api = {
   updateJobNotes: (id: string, notes: string) =>
     request<Job>(`/api/jobs/${id}/notes`, { method: "PATCH", body: JSON.stringify({ notes }) }),
   deleteJob: (id: string) => request<void>(`/api/jobs/${id}`, { method: "DELETE" }),
+
+  generateDocuments: (jobId: string) =>
+    request<GeneratedDocument[]>(`/api/jobs/${jobId}/documents/generate`, { method: "POST" }),
+  listDocuments: (jobId: string) => request<GeneratedDocument[]>(`/api/jobs/${jobId}/documents`),
+  updateDocument: (
+    docId: string,
+    payload: { content?: GeneratedDocument["content"]; status?: DocumentStatus },
+  ) =>
+    request<GeneratedDocument>(`/api/jobs/documents/${docId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  generateInterviewPrep: (jobId: string) =>
+    request<InterviewPrep>(`/api/jobs/${jobId}/interview-prep`, { method: "POST" }),
+  getInterviewPrep: (jobId: string) => request<InterviewPrep | null>(`/api/jobs/${jobId}/interview-prep`),
+
+  getApplication: (jobId: string) => request<Application | null>(`/api/jobs/${jobId}/application`),
+  listApplications: () => request<Application[]>("/api/applications"),
+  updateApplicationNotes: (jobId: string, notes: string) =>
+    request<Application>(`/api/jobs/${jobId}/application/notes`, {
+      method: "PATCH",
+      body: JSON.stringify({ notes }),
+    }),
+  markFollowedUp: (jobId: string) =>
+    request<Application>(`/api/jobs/${jobId}/application/followup`, { method: "POST" }),
+
+  getAnalytics: () => request<Analytics>("/api/analytics"),
 };

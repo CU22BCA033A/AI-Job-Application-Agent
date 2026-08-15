@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import type { Job } from "../lib/api";
 
 const RECOMMENDATION_STYLE: Record<string, string> = {
@@ -22,13 +24,30 @@ export function JobCard({
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
 }) {
+  const navigate = useNavigate();
+  const dragged = useRef(false);
+
   return (
-    <div draggable={draggable} onDragStart={onDragStart} className="cursor-grab active:cursor-grabbing">
+    <div
+      draggable={draggable}
+      onDragStart={(e) => {
+        dragged.current = true;
+        onDragStart?.(e);
+      }}
+      className="cursor-grab active:cursor-grabbing"
+    >
       <motion.div
         layout
         whileHover={{ scale: 1.02, y: -2 }}
         transition={{ type: "spring", stiffness: 300, damping: 22 }}
-        className="rounded-2xl border border-ink-800 bg-ink-900 p-4 shadow-sm"
+        onClick={() => {
+          if (dragged.current) {
+            dragged.current = false;
+            return;
+          }
+          navigate(`/jobs/${job.id}`);
+        }}
+        className="cursor-pointer rounded-2xl border border-ink-800 bg-ink-900 p-4 shadow-sm"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

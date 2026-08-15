@@ -2,8 +2,9 @@
 
 *Vrutti* is Sanskrit for "profession" or "livelihood" — the word behind
 "vocation." It's a personal AI job application agent: paste a job posting,
-get an honest fit score, and (as the project grows) get help drafting a
-tailored resume and cover letter — using only what's actually true about you.
+get an honest fit score, and get help drafting a tailored resume and cover
+letter, prepping for the interview, and tracking the application afterward —
+using only what's actually true about you.
 
 This is a real daily-use tool, not a demo, and it's built around one hard
 rule: **it drafts, you decide.** Nothing is ever submitted automatically, and
@@ -23,10 +24,11 @@ accuracy note below.
 
 - **No auto-apply.** Vrutti never submits an application on its own. Every
   generated document is a draft you review, edit, and export yourself.
-- **No fabrication.** The Drafter agent (coming in a later phase) will only
-  ever rephrase or reorder what's in your stored profile. A second Reviewer
-  agent double-checks every draft against your real profile before you see
-  it. If it can't verify something, it flags it instead of "fixing" it.
+- **No fabrication.** The Drafter agent only ever rephrases or reorders
+  what's in your stored profile. A second Reviewer agent — a genuinely
+  separate LLM call — double-checks every draft against your real profile
+  before you see it. If it can't verify something, it flags it instead of
+  "fixing" it.
 - **No aggressive scraping.** You paste job descriptions or URLs yourself.
   There's no login-walled scraper against LinkedIn/Indeed/etc.
 - **Your data stays yours.** Locally it's a SQLite file on your machine; if
@@ -34,21 +36,21 @@ accuracy note below.
   only outbound calls are to your LLM provider (NVIDIA NIM by default), using
   your own key.
 - **"Accuracy" is honest, not perfect.** The fit score, extracted fields, and
-  (later) drafted content are the model's judgment, not a deterministic
-  calculation — there's no such thing as a "100% accurate" LLM opinion. What
-  *is* guaranteed: outputs are structurally valid (forced function-call
-  schemas, not parsed prose), every generated document will eventually go
-  through a separate Reviewer pass before you see it, and nothing is ever
-  invented outside your stored profile. Treat the fit score and gaps as a
+  drafted content are the model's judgment, not a deterministic calculation
+  — there's no such thing as a "100% accurate" LLM opinion. What *is*
+  guaranteed: outputs are structurally valid (forced function-call schemas,
+  not parsed prose), every generated document goes through a separate
+  Reviewer pass before you see it, and nothing is ever invented outside your
+  stored profile. Treat the fit score and gaps as a
   strong second opinion worth reading, not gospel. This is doubly true on the
   free open-weight model this app runs by default — it's a smaller model
   than a frontier one, so read its output a little more skeptically.
-- **Current state:** Phases 1–2 (profile, resume import from pasted text or
-  a PDF upload, job intake, fit evaluation) are fully built and tested
-  end-to-end. The frontend shell, including the 3D hero and the
-  fit-evaluation "wow moment," is live. The Drafter/Reviewer pipeline, PDF
-  *export*, application tracking, and interview prep (Phases 3–5) are not
-  built yet — see "What's next" below.
+- **Current state:** Phases 1–5 are built and tested end-to-end — profile +
+  resume import (text or PDF), job intake + fit evaluation, the Drafter/
+  Reviewer tailored-document pipeline with a diff view and client-side PDF
+  export, application tracking with follow-up reminders and analytics, and
+  interview prep (question bank + STAR story bank). See "What's next" below
+  for what's still just polish.
 
 ## How it works today
 
@@ -62,7 +64,26 @@ accuracy note below.
    apply," "stretch — tailor carefully," or "skip." You'll see this land as
    an animated score ring, not a blank spinner.
 4. Drag jobs between pipeline columns (New → Evaluated → Drafting → Ready →
-   Submitted → Interviewing → Closed) as you work them.
+   Submitted → Interviewing → Closed), or click a card to open its detail
+   page — that's where the rest of the workflow lives.
+5. On a job's detail page, hit **Generate drafts**. The **Drafter** writes a
+   tailored resume (reworded/reordered bullets, never invented ones) and a
+   cover letter from your real profile; the **Reviewer** — a genuinely
+   separate LLM call — then checks that draft and flags anything it can't
+   verify (severity-tagged notes, not silent edits). Review the side-by-side
+   diff against your real resume, edit either document inline if you want,
+   and **Approve** each one — once both are approved, the job auto-advances
+   to "Ready."
+6. **Download PDF** for either document — generated client-side (real
+   selectable text, not a screenshot), so nothing leaves your browser to
+   produce the file.
+7. Move a job to **Submitted** and Vrutti starts tracking it: submission
+   date, freeform notes, and a "worth a follow-up" flag once 10+ days pass
+   without you marking a touchpoint. The **Applications** page rolls all of
+   this up into response-rate/interview-rate analytics.
+8. Hit **Generate prep** on a job's detail page for a likely-question bank
+   and STAR-format story bank — each story explicitly grounded in a real
+   achievement from your profile, not a generic template answer.
 
 ## Project structure
 
@@ -79,12 +100,17 @@ backend/            FastAPI app
     routers/
       profile.py           GET/PUT profile, resume import (text + PDF)
       jobs.py                Job CRUD, fit evaluation, status/notes
+      documents.py             Draft/review generation, versioning, approval-gating, interview prep
+      applications.py           Application tracking, follow-up reminders, analytics
     services/
       llm_client.py           Shared OpenAI-compatible tool-call wrapper (NVIDIA NIM)
       extraction.py            Job posting -> structured fields
       fit_evaluator.py          Profile + job -> fit score/gaps/recommendation
       resume_parser.py          Resume text -> structured profile
       pdf_text.py                PDF -> plain text (pypdf, no system deps)
+      drafter.py                  Profile + job -> tailored resume + cover letter (never invents facts)
+      reviewer.py                   Separate LLM pass that fact-checks the draft, flags rather than rewrites
+      interview_prep.py               Profile + job -> question bank + STAR story bank
   tests/               Pytest suite (mocks LLM calls, proves the flow)
   requirements.txt      Runtime deps only (what gets deployed)
   requirements-dev.txt   + uvicorn/pytest/httpx for local dev
@@ -92,9 +118,12 @@ backend/            FastAPI app
 
 frontend/            Vite + React + TypeScript + Tailwind
   src/
-    components/        Hero3D, FitScoreRing, EvaluationProgress, JobCard, Layout
-    pages/               Landing, JobsPage, ProfilePage
-    lib/api.ts             Typed fetch client for the backend
+    components/        Hero3D, FitScoreRing, EvaluationProgress, JobCard, Layout,
+                          ResumeDiff, ReviewNoteList
+    pages/               Landing, JobsPage, JobDetailPage, ApplicationsPage, ProfilePage
+    lib/
+      api.ts                Typed fetch client for the backend
+      pdf.ts                  Client-side PDF export (jsPDF) for tailored documents
   vercel.json             SPA rewrite so client-side routes survive a refresh
 
 DEPLOYMENT.md         Step-by-step Vercel + Neon Postgres deployment guide
@@ -152,11 +181,25 @@ function. Takes about 15 minutes the first time.
 
 ## Design notes
 
-- **Drafter/Reviewer are separate agent calls, not one merged prompt.** This
-  keeps the anti-fabrication check real and auditable rather than a single
-  model quietly "cleaning up" its own output. This structure isn't wired up
-  yet (Phase 3), but `services/llm_client.py`'s `call_structured_tool`
-  helper is written to support each agent as its own tool-call schema.
+- **Drafter/Reviewer are separate agent calls, not one merged prompt.** The
+  Reviewer's system prompt explicitly tells it "you did NOT write these
+  documents" — it only ever fact-checks against the stored profile and
+  flags with a severity level (`error`/`warning`/`info`). It never silently
+  rewrites a draft; a failed review shows up as a flagged document with
+  notes, and approval is a human action.
+- **Approval gates the pipeline, not the model.** A job only auto-advances
+  to "Ready" once the latest resume *and* cover letter documents are both
+  explicitly approved by you — the Reviewer passing its own check isn't
+  enough on its own.
+- **PDF export is client-side, deliberately.** WeasyPrint (the original
+  plan) needs native Cairo/Pango libraries that don't reliably exist in a
+  serverless function. Generating the PDF in the browser with jsPDF instead
+  sidesteps that, and produces real selectable text (ATS-parseable), not a
+  rasterized screenshot.
+- **Follow-up reminders are a pure date check**, not another LLM call:
+  10+ days since submission (or the last marked follow-up) while a job is
+  still in "Submitted" status. No model opinion involved in when to nudge
+  you.
 - **Fit evaluation is read-only.** Scoring a job never drafts anything —
   the point is to let you archive low-fit postings before spending any
   tailoring effort on them.
@@ -168,22 +211,16 @@ function. Takes about 15 minutes the first time.
   why `NVIDIA_MODEL` is easy to override and a missing tool call surfaces as
   a clear 502 instead of a silent bad response (see `llm_client.py`).
 
-## What's next (Phases 3–6)
+## What's next (Phase 6 — polish)
 
-- Drafter agent: tailored resume bullets + cover letter, generated only from
-  profile content.
-- Reviewer agent: fabrication/keyword/tone check, run as a genuinely separate
-  pass.
-- Side-by-side diff view between base and tailored resume.
-- PDF *export* for the tailored resume + cover letter (PDF *import* is
-  already done). WeasyPrint was the original plan, but it needs native
-  Cairo/Pango libraries that don't reliably exist in a serverless
-  environment — likely candidates now are a client-side PDF library or a
-  headless-browser render step, decided when this phase is actually built.
-- Application tracker: submission dates, follow-up reminders, response/
-  interview rate analytics.
-- Interview prep: question bank + STAR-format story bank from real
-  achievements, optional mock-interview chat mode.
+Phases 1–5 are done. What's left is genuinely polish, not missing
+functionality:
+
 - A dedicated structured editor for work history/education/skills/projects
   on the Profile page (today, the fastest path is resume import + the
   Basics form; the full arrays are already there via the API).
+- Optional mock-interview chat mode on top of the existing question/story
+  bank.
+- Code-splitting the frontend bundle (the Three.js hero pushes the main
+  chunk past Vite's 500kB warning threshold — cosmetic build-log noise, not
+  a functional issue).
