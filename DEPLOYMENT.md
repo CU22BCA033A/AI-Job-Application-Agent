@@ -75,7 +75,13 @@ the first time it connects.
 
 5. Deploy. Once it's live, note the URL, e.g. `https://vrutti-api.vercel.app`.
 6. Sanity check: open `https://vrutti-api.vercel.app/api/health` in a
-   browser — you should see `{"status":"ok"}`. If you see a 500, check the
+   browser — you should see `{"status":"ok"}`. If instead you get Vercel's
+   own 404 page (an "ID: xxx::xxx" error, not a small JSON `{"detail":"Not
+   Found"}`) on *every* path including `/api/health`, the build itself
+   succeeded but nothing is routing requests to it — check that
+   `backend/vercel.json` contains a `rewrites` entry sending everything to
+   `/api/index` (already included in this repo; if you forked before it was
+   added, pull the latest and redeploy). If you see a 500, check the
    function logs in the Vercel dashboard (almost always a missing/incorrect
    `DATABASE_URL`).
 
