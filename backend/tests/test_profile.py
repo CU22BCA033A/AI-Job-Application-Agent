@@ -45,6 +45,63 @@ def test_update_profile_persists_real_data(client):
     assert r2.json()["full_name"] == "Asha Rao"
 
 
+def test_import_resume_pdf_does_not_save_profile(client, monkeypatch):
+    from tests.conftest import make_pdf_bytes
+
+    def fake_parse(resume_text: str) -> dict:
+        assert "Senior Backend Engineer" in resume_text
+        return {
+            "full_name": "Asha Rao",
+            "email": "",
+            "phone": "",
+            "location": "",
+            "links": {},
+            "summary": "",
+            "work_history": [],
+            "education": [],
+            "skills": [],
+            "projects": [],
+            "achievements": [],
+            "parsing_notes": [],
+        }
+
+    monkeypatch.setattr("app.routers.profile.parse_resume_text", fake_parse)
+
+    pdf_bytes = make_pdf_bytes("Asha Rao - Senior Backend Engineer with real resume text content")
+    r = client.post(
+        "/api/profile/import/pdf",
+        files={"file": ("resume.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert r.status_code == 200
+    assert r.json()["profile"]["full_name"] == "Asha Rao"
+
+    # importing must never silently overwrite the real stored profile
+    stored = client.get("/api/profile").json()
+    assert stored["full_name"] == ""
+
+
+def test_import_resume_pdf_rejects_non_pdf(client):
+    r = client.post(
+        "/api/profile/import/pdf",
+        files={"file": ("resume.pdf", b"not actually a pdf", "application/pdf")},
+    )
+    assert r.status_code == 400
+
+
+def test_import_resume_pdf_rejects_image_only_scan(client, monkeypatch):
+    from tests.conftest import make_pdf_bytes
+
+    # A PDF with only a few characters of "text" simulates a scanned image
+    # that pypdf can't extract meaningful content from.
+    pdf_bytes = make_pdf_bytes("hi")
+    r = client.post(
+        "/api/profile/import/pdf",
+        files={"file": ("resume.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert r.status_code == 422
+    assert "scanned" in r.json()["detail"].lower()
+
+
 def test_import_resume_does_not_save_profile(client, monkeypatch):
     def fake_parse(resume_text: str) -> dict:
         return {

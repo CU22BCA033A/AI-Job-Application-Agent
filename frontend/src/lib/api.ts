@@ -118,6 +118,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ resume_text }),
     }),
+  importResumePdf: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${API_BASE}/api/profile/import/pdf`, { method: "POST", body: formData });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.detail ?? `Upload failed (${res.status}).`);
+    }
+    return res.json() as Promise<{ profile: Partial<Profile>; notes: string[] }>;
+  },
 
   listJobs: () => request<Job[]>("/api/jobs"),
   getJob: (id: string) => request<Job>(`/api/jobs/${id}`),

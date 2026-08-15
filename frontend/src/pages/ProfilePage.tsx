@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { api, type Profile } from "../lib/api";
 
@@ -30,6 +30,10 @@ export function ProfilePage() {
   const [resumeText, setResumeText] = useState("");
   const [importing, setImporting] = useState(false);
   const [importNotes, setImportNotes] = useState<string[]>([]);
+
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
+  const [importingPdf, setImportingPdf] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api
@@ -70,6 +74,28 @@ export function ProfilePage() {
     }
   }
 
+  async function handlePdfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPdfFileName(file.name);
+    setImportingPdf(true);
+    setError(null);
+    try {
+      const { profile: parsed, notes } = await api.importResumePdf(file);
+      setProfile((prev) => ({ ...prev, ...parsed }));
+      setImportNotes(notes);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't read that PDF. You can also paste the text below instead.",
+      );
+    } finally {
+      setImportingPdf(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   if (loading) {
     return <div className="mx-auto max-w-3xl px-6 py-16 text-ink-200">Loading your profile…</div>;
   }
@@ -85,15 +111,51 @@ export function ProfilePage() {
       <section className="mt-6 rounded-3xl border border-ink-800 bg-ink-900/60 p-6">
         <h2 className="font-display text-lg font-semibold text-ink-50">Import from a resume</h2>
         <p className="mt-1 text-sm text-ink-200">
-          Paste your existing resume text and Vrutti will draft a structured profile for you to
-          review — nothing is saved until you hit "Save profile" below.
+          Upload your resume PDF, or paste the text — either way Vrutti drafts a structured
+          profile for you to review. Nothing is saved until you hit "Save profile" below.
         </p>
+
+        <div className="mt-4">
+          <label
+            htmlFor="resume-pdf-input"
+            className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed p-6 text-center transition-colors ${
+              importingPdf
+                ? "border-mint-500/50 bg-mint-500/5"
+                : "border-ink-700 hover:border-mint-500/60 hover:bg-ink-900"
+            }`}
+          >
+            <span className="text-sm font-medium text-ink-100">
+              {importingPdf
+                ? `Reading ${pdfFileName ?? "your resume"}…`
+                : pdfFileName
+                  ? `Uploaded ${pdfFileName} — click to replace`
+                  : "Click to upload a resume PDF"}
+            </span>
+            <span className="text-xs text-ink-400">PDF, up to 10 MB, with selectable text (not a scan)</span>
+            <input
+              id="resume-pdf-input"
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={handlePdfChange}
+              disabled={importingPdf}
+              className="sr-only"
+            />
+          </label>
+        </div>
+
+        <div className="my-4 flex items-center gap-3 text-xs text-ink-400">
+          <div className="h-px flex-1 bg-ink-800" />
+          or paste the text
+          <div className="h-px flex-1 bg-ink-800" />
+        </div>
+
         <textarea
           value={resumeText}
           onChange={(e) => setResumeText(e.target.value)}
           rows={6}
           placeholder="Paste your resume text here…"
-          className="mt-3 w-full resize-y rounded-2xl border border-ink-700 bg-ink-950 p-4 text-sm text-ink-50 placeholder:text-ink-400 focus:border-mint-500 focus:outline-none"
+          className="w-full resize-y rounded-2xl border border-ink-700 bg-ink-950 p-4 text-sm text-ink-50 placeholder:text-ink-400 focus:border-mint-500 focus:outline-none"
         />
         <button
           onClick={handleImport}

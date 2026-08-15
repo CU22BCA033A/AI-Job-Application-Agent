@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.services.pdf_text import extract_text_from_pdf
 from app.services.resume_parser import parse_resume_text
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -43,5 +44,20 @@ def import_resume(payload: schemas.ResumeImportRequest):
     does NOT save anything, so a bad parse never silently overwrites real data.
     """
     parsed = parse_resume_text(payload.resume_text)
+    notes = parsed.pop("parsing_notes", [])
+    return schemas.ResumeImportResponse(profile=schemas.ProfileBase(**parsed), notes=notes)
+
+
+@router.post("/import/pdf", response_model=schemas.ResumeImportResponse)
+async def import_resume_pdf(file: UploadFile):
+    """Same as /import, but starting from an uploaded PDF instead of pasted text.
+
+    Text is extracted locally (pypdf, no external service) before being sent
+    to Claude for parsing. Like /import, nothing is saved until you review
+    and hit "Save profile" in the UI.
+    """
+    file_bytes = await file.read()
+    resume_text = extract_text_from_pdf(file_bytes)
+    parsed = parse_resume_text(resume_text)
     notes = parsed.pop("parsing_notes", [])
     return schemas.ResumeImportResponse(profile=schemas.ProfileBase(**parsed), notes=notes)
