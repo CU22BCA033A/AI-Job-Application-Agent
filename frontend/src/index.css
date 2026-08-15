@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+
+  /* Warm, confident palette — deep indigo/charcoal ground, coral + mint accents. */
+  --color-ink-950: #0f0d17;
+  --color-ink-900: #171320;
+  --color-ink-800: #201a2c;
+  --color-ink-700: #2c2438;
+  --color-ink-600: #3c3149;
+  --color-ink-400: #6b6180;
+  --color-ink-200: #b6aec8;
+  --color-ink-100: #e4dff0;
+  --color-ink-50: #f7f5fb;
+
+  --color-coral-400: #ff8a7a;
+  --color-coral-500: #ff6b57;
+  --color-coral-600: #ec4f3a;
+
+  --color-mint-400: #5fe6b0;
+  --color-mint-500: #3ddc97;
+  --color-mint-600: #26bb7d;
+
+  --color-amber-400: #ffc670;
+  --color-amber-500: #ffb648;
+
+  --shadow-glow-coral: 0 0 40px -8px rgba(255, 107, 87, 0.45);
+  --shadow-glow-mint: 0 0 40px -8px rgba(61, 220, 151, 0.4);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink-950 text-ink-50 font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-coral-500/30 text-ink-50;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mint-400);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
