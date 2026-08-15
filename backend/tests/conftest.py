@@ -1,6 +1,6 @@
 import os
 
-os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test-dummy-key")
+os.environ.setdefault("NVIDIA_API_KEY", "nvapi-test-dummy-key")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 import pytest

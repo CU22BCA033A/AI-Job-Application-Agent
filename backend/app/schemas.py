@@ -87,7 +87,7 @@ class ResumeImportRequest(BaseModel):
 
 class ResumeImportResponse(BaseModel):
     profile: ProfileBase
-    notes: list[str] = Field(default_factory=list)  # anything Claude flagged as ambiguous/needs review
+    notes: list[str] = Field(default_factory=list)  # anything the LLM flagged as ambiguous/needs review
 
 
 # ---------- Job postings ----------

@@ -8,8 +8,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-5"
+    # NVIDIA NIM (build.nvidia.com) — OpenAI-compatible free-tier inference.
+    # Swap nvidia_base_url to point at any other OpenAI-compatible provider.
+    nvidia_api_key: str = ""
+    nvidia_model: str = "meta/llama-3.3-70b-instruct"
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     database_url: str = "sqlite:///./vrutti.db"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

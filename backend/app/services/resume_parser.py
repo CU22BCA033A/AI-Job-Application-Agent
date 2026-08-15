@@ -2,7 +2,7 @@
 structured Profile shape, for the user to review and correct — never trusted blindly.
 """
 
-from app.services.claude_client import call_structured_tool
+from app.services.llm_client import call_structured_tool
 
 _SYSTEM = (
     "You convert a resume's raw text into a structured profile record. Extract "

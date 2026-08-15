@@ -7,7 +7,7 @@ low-fit postings can be archived before any tailoring effort is spent on them.
 import json
 
 from app.models import JobPosting, Profile
-from app.services.claude_client import call_structured_tool
+from app.services.llm_client import call_structured_tool
 
 _SYSTEM = (
     "You are a candid, experienced career coach evaluating fit between a real "

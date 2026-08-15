@@ -31,7 +31,9 @@ Neon's free tiers.
 
 - Push this repo to your own GitHub account (fork it, or push this branch
   to a repo you control) — Vercel deploys from a GitHub repo you connect.
-- Have your Anthropic API key ready (console.anthropic.com).
+- Have a free NVIDIA API key ready — sign up at
+  [build.nvidia.com](https://build.nvidia.com/), no card required, and
+  generate a key from your account page.
 
 ## 1. Create the database (Neon)
 
@@ -66,8 +68,8 @@ the first time it connects.
 
    | Variable | Value |
    |---|---|
-   | `ANTHROPIC_API_KEY` | your key from console.anthropic.com |
-   | `CLAUDE_MODEL` | `claude-sonnet-5` (or leave unset — that's the default) |
+   | `NVIDIA_API_KEY` | your free key from build.nvidia.com |
+   | `NVIDIA_MODEL` | `meta/llama-3.3-70b-instruct` (or leave unset — that's the default) |
    | `DATABASE_URL` | the `postgresql+psycopg://...` string from step 1 |
    | `CORS_ORIGINS` | leave blank for now — you'll come back and set this after step 3 |
 
@@ -116,17 +118,26 @@ If step 2 hangs and then errors, see "Timeouts" below.
 
 **Cold starts.** A serverless Python function that hasn't been hit in a
 while takes a beat (often 1-3s) to spin up before it even starts talking to
-Claude. The first request after idle time will feel slower than the rest —
+the LLM. The first request after idle time will feel slower than the rest —
 this is normal serverless behavior, not a bug.
 
-**Timeouts.** Claude calls for resume parsing or fit evaluation can take
-several seconds. Vercel's Hobby (free) plan currently allows Python
-functions up to 60s via the `maxDuration` setting already in
-`backend/vercel.json` — that's enough headroom for any single call in this
-app. If your account's plan enforces a lower cap and you see 504s, either
-upgrade the relevant plan tier or move the backend to a host built for
-longer-running Python processes (Render and Railway both have simple free
-tiers and don't impose the same per-request ceiling).
+**Timeouts.** Model calls for resume parsing or fit evaluation can take
+several seconds — and free-tier inference can be slower and less
+predictable than a paid frontier API, especially under load. Vercel's Hobby
+(free) plan currently allows Python functions up to 60s via the
+`maxDuration` setting already in `backend/vercel.json` — that's enough
+headroom for any single call in this app under normal conditions. If your
+account's plan enforces a lower cap, or NVIDIA NIM is slow enough to hit
+even 60s, either upgrade the relevant plan tier or move the backend to a
+host built for longer-running Python processes (Render and Railway both
+have simple free tiers and don't impose the same per-request ceiling).
+
+**Tool-calling reliability.** Not every model in NVIDIA's free catalog
+reliably honors a forced tool/function call — if you switch `NVIDIA_MODEL`
+away from the default and start seeing 502s with "didn't return the
+expected response," that model likely doesn't support forced tool choice
+well. Check the model's page on build.nvidia.com for tool-calling support
+before switching, or revert to the default.
 
 **This isn't "set once and forget."** Every push to the branch Vercel is
 tracking triggers a new deployment automatically. If you don't want that,
@@ -139,5 +150,5 @@ functions have no persistent local disk to keep a SQLite file on.
 
 **Data ownership.** The Postgres database is yours (Neon's free tier, your
 account) — nothing here is Vrutti "storing your data" on some third-party
-service beyond the Anthropic API calls for extraction/evaluation and the
+service beyond the NVIDIA NIM calls for extraction/evaluation and the
 database you provisioned yourself.

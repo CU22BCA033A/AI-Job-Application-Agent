@@ -2,7 +2,7 @@
 into structured fields: title, company, location, salary, requirements, keywords.
 """
 
-from app.services.claude_client import call_structured_tool
+from app.services.llm_client import call_structured_tool
 
 _SYSTEM = (
     "You extract structured fields from a job posting's raw text. Only use "

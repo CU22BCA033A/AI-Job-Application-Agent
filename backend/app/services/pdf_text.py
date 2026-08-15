@@ -1,9 +1,9 @@
-"""Extracts plain text from an uploaded resume PDF, ahead of the Claude parse step.
+"""Extracts plain text from an uploaded resume PDF, ahead of the LLM parse step.
 
 Pure-Python (pypdf) — no system dependencies, so this works fine on serverless.
 Does not do OCR: a scanned/image-only PDF will yield little or no text, and
 callers should surface that as an actionable error rather than sending an
-empty document to Claude.
+empty document to the model.
 """
 
 from io import BytesIO

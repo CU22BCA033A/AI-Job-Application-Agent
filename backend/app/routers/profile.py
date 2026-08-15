@@ -53,7 +53,7 @@ async def import_resume_pdf(file: UploadFile):
     """Same as /import, but starting from an uploaded PDF instead of pasted text.
 
     Text is extracted locally (pypdf, no external service) before being sent
-    to Claude for parsing. Like /import, nothing is saved until you review
+    to the LLM for parsing. Like /import, nothing is saved until you review
     and hit "Save profile" in the UI.
     """
     file_bytes = await file.read()
