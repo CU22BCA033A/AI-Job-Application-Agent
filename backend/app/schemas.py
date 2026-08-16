@@ -98,6 +98,12 @@ class JobCreateFromText(BaseModel):
     source_url: str | None = None
 
 
+class KeywordAnalysis(BaseModel):
+    score: int | None  # None when the posting had no extractable keywords/requirements to check
+    matched: list[str]
+    missing: list[str]
+
+
 class JobOut(BaseModel):
     id: str
     source_url: str | None
@@ -114,6 +120,7 @@ class JobOut(BaseModel):
     fit_strengths: list[str]
     fit_gaps: list[str]
     fit_recommendation: FitRecommendation | None
+    fit_keyword_analysis: KeywordAnalysis | None
     notes: str
     created_at: datetime
     updated_at: datetime

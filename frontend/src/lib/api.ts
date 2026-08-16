@@ -86,6 +86,12 @@ export type JobStatus =
 
 export type FitRecommendation = "tailor_and_apply" | "stretch_tailor_carefully" | "skip";
 
+export interface KeywordAnalysis {
+  score: number | null;
+  matched: string[];
+  missing: string[];
+}
+
 export interface Job {
   id: string;
   source_url: string | null;
@@ -102,6 +108,7 @@ export interface Job {
   fit_strengths: string[];
   fit_gaps: string[];
   fit_recommendation: FitRecommendation | null;
+  fit_keyword_analysis: KeywordAnalysis | null;
   notes: string;
   created_at: string;
   updated_at: string;

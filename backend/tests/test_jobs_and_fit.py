@@ -13,6 +13,7 @@ FAKE_FIT_STRONG = {
     "gaps": ["No stated experience with their specific cloud provider"],
     "reasoning": "Strong overlap between real production experience and the posting's core requirements.",
     "recommendation": "tailor_and_apply",
+    "keyword_analysis": {"score": 90, "matched": ["Python", "Kafka", "PostgreSQL"], "missing": ["distributed systems"]},
 }
 
 FAKE_FIT_WEAK = {
@@ -21,6 +22,7 @@ FAKE_FIT_WEAK = {
     "gaps": ["No backend experience listed", "None of the required tools appear in the profile"],
     "reasoning": "The profile shows no overlap with this posting's core requirements.",
     "recommendation": "skip",
+    "keyword_analysis": {"score": 0, "matched": [], "missing": ["Python", "Kafka", "PostgreSQL", "distributed systems"]},
 }
 
 
@@ -79,10 +81,13 @@ def test_full_fit_evaluation_flow_strong_match(client, monkeypatch):
     assert body["fit_score"] == 88
     assert body["fit_recommendation"] == "tailor_and_apply"
     assert "Kafka" in " ".join(body["fit_strengths"])
+    assert body["fit_keyword_analysis"]["score"] == 90
+    assert "Python" in body["fit_keyword_analysis"]["matched"]
 
     # persisted, not just returned
     fetched = client.get(f"/api/jobs/{job_id}").json()
     assert fetched["fit_score"] == 88
+    assert fetched["fit_keyword_analysis"]["matched"] == ["Python", "Kafka", "PostgreSQL"]
 
 
 def test_weak_fit_recommends_skip(client, monkeypatch):

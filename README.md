@@ -35,14 +35,22 @@ accuracy note below.
   you deploy it (see `DEPLOYMENT.md`), it's a Postgres database you own. The
   only outbound calls are to your LLM provider (NVIDIA NIM by default), using
   your own key.
-- **"Accuracy" is honest, not perfect.** The fit score, extracted fields, and
-  drafted content are the model's judgment, not a deterministic calculation
-  — there's no such thing as a "100% accurate" LLM opinion. What *is*
-  guaranteed: outputs are structurally valid (forced function-call schemas,
-  not parsed prose), every generated document goes through a separate
-  Reviewer pass before you see it, and nothing is ever invented outside your
-  stored profile. Treat the fit score and gaps as a
-  strong second opinion worth reading, not gospel. This is doubly true on the
+- **"Accuracy" is honest, not perfect.** The fit score is a blend of two
+  different signals, not just an LLM's opinion: a deterministic keyword
+  match (does each term the job posting actually uses show up anywhere in
+  your profile — the same blunt technique a real ATS keyword scanner uses,
+  weighted 65% of the score) plus the model's holistic read of the two
+  (35%, catching synonyms and transferable experience a literal keyword
+  match misses). The job detail page shows exactly which keywords matched
+  and which didn't, so the number is traceable to the actual posting text,
+  not a black box. Extracted fields and drafted content are still the
+  model's judgment, not a deterministic calculation — there's no such thing
+  as a "100% accurate" LLM opinion there. What *is* guaranteed: outputs are
+  structurally valid (forced function-call schemas, not parsed prose), every
+  generated document goes through a separate Reviewer pass before you see
+  it, and nothing is ever invented outside your stored profile. Treat the
+  fit score and gaps as a strong second opinion worth reading, not gospel.
+  This is doubly true on the
   free open-weight model this app runs by default — it's a smaller model
   than a frontier one, so read its output a little more skeptically.
 - **Current state:** Phases 1–5 are built and tested end-to-end — profile +

@@ -236,6 +236,32 @@ export function JobDetailPage() {
                 {job.fit_gaps.join(" · ")}
               </p>
             )}
+            {job.fit_keyword_analysis && job.fit_keyword_analysis.score !== null && (
+              <div className="mt-4 border-t border-ink-800 pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+                  ATS keyword match — {job.fit_keyword_analysis.score}% of this posting's terms found in
+                  your profile
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {job.fit_keyword_analysis.matched.map((kw) => (
+                    <span
+                      key={`m-${kw}`}
+                      className="rounded-full bg-mint-500/15 px-2 py-0.5 text-[11px] font-medium text-mint-400"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                  {job.fit_keyword_analysis.missing.map((kw) => (
+                    <span
+                      key={`x-${kw}`}
+                      className="rounded-full bg-ink-800 px-2 py-0.5 text-[11px] font-medium text-ink-400 line-through decoration-ink-500"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}

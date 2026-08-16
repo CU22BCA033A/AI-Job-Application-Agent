@@ -66,6 +66,7 @@ def evaluate_job(job_id: str, db: Session = Depends(get_db)):
     job.fit_gaps = result["gaps"]
     job.fit_reasoning = result["reasoning"]
     job.fit_recommendation = models.FitRecommendation(result["recommendation"])
+    job.fit_keyword_analysis = result["keyword_analysis"]
     job.status = models.JobStatus.EVALUATED
     db.commit()
     db.refresh(job)

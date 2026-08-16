@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -38,3 +38,23 @@ def init_db() -> None:
     from app import models  # noqa: F401  (ensure models are registered on Base)
 
     Base.metadata.create_all(bind=engine)
+    _ensure_new_columns()
+
+
+def _ensure_new_columns() -> None:
+    """There's no migration framework here (no Alembic) — create_all() only
+    creates missing *tables*, so a column added to a model after a database
+    already exists (like the deployed Neon one) needs to be added by hand.
+
+    SQLite's ALTER TABLE doesn't support "ADD COLUMN IF NOT EXISTS" at all
+    (a plain syntax error, not a no-op) — despite Postgres supporting that
+    exact syntax — so it needs its own existence check via PRAGMA rather
+    than relying on a swallowed exception to make it merely look idempotent.
+    """
+    with engine.begin() as conn:
+        if is_sqlite:
+            existing = {row[1] for row in conn.execute(text("PRAGMA table_info(job_postings)"))}
+            if "fit_keyword_analysis" not in existing:
+                conn.execute(text("ALTER TABLE job_postings ADD COLUMN fit_keyword_analysis JSON"))
+        else:
+            conn.execute(text("ALTER TABLE job_postings ADD COLUMN IF NOT EXISTS fit_keyword_analysis JSON"))

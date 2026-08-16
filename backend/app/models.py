@@ -97,6 +97,11 @@ class JobPosting(Base):
     fit_recommendation: Mapped[FitRecommendation | None] = mapped_column(
         Enum(FitRecommendation), nullable=True
     )
+    # Deterministic keyword-vs-profile match (see fit_evaluator.py) — the
+    # ATS-style grounding that fit_score is partly computed from, kept
+    # separately so the UI can show exactly which keywords matched/were
+    # missing instead of just trusting an opaque LLM number.
+    fit_keyword_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     notes: Mapped[str] = mapped_column(Text, default="")
 
