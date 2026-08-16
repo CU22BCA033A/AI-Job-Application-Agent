@@ -1,23 +1,27 @@
-# Deploying Vrutti to Vercel
+# Deploying Vrutti
 
-Vrutti deploys as **two separate Vercel projects from this one repo** — a
-static frontend and a Python serverless API — plus a small managed Postgres
-database. This is the standard pattern for a Vite + FastAPI app on Vercel;
-trying to force both into a single project adds complexity without any real
-benefit here.
+The frontend deploys to **Vercel** (a static Vite build). The backend
+deploys to **Render** (a persistent Python web service) — not Vercel.
+Vercel's serverless functions are built for quick request/response cycles
+and enforce a real platform-level timeout that's shorter than it looks even
+when `vercel.json` says otherwise, especially on the free Hobby plan; LLM
+calls with forced structured output on a free-tier model regularly take
+15-40+ seconds, which collides with that ceiling. Render runs the exact same
+FastAPI app as a normal always-on process instead of a cold-started
+function, so a slow model call is just a slow request, not a killed one.
 
-Total time: about 15 minutes, and everything below fits in Vercel's and
-Neon's free tiers.
+Total time: about 20 minutes, and everything below fits in Vercel's, Render's,
+and Neon's free tiers.
 
 ```
                  ┌─────────────────────┐
-   browser  ───▶ │  vrutti-web          │  Vercel project #1
+   browser  ───▶ │  vrutti-web          │  Vercel — static Vite build
                  │  (Vite static build) │  Root Directory: frontend
                  └──────────┬───────────┘
                              │ fetch() calls, CORS
                              ▼
                  ┌─────────────────────┐
-                 │  vrutti-api          │  Vercel project #2
+                 │  vrutti-api          │  Render — persistent web service
                  │  (FastAPI, Python)   │  Root Directory: backend
                  └──────────┬───────────┘
                              │ DATABASE_URL
@@ -30,7 +34,8 @@ Neon's free tiers.
 ## 0. Before you start
 
 - Push this repo to your own GitHub account (fork it, or push this branch
-  to a repo you control) — Vercel deploys from a GitHub repo you connect.
+  to a repo you control) — both Vercel and Render deploy from a GitHub repo
+  you connect.
 - Have a free NVIDIA API key ready — sign up at
   [build.nvidia.com](https://build.nvidia.com/), no card required, and
   generate a key from your account page.
@@ -57,57 +62,71 @@ You don't need to run any migrations by hand — the backend calls
 `Base.metadata.create_all()` on startup, which creates any missing tables
 the first time it connects.
 
-## 2. Deploy the backend (`vrutti-api`)
+## 2. Deploy the backend (`vrutti-api`) — on Render
 
-1. In Vercel: **Add New → Project**, import your GitHub repo.
-2. When asked for the **Root Directory**, set it to `backend`.
-3. Framework preset: Vercel should auto-detect Python (via `backend/api/index.py`
-   and `backend/requirements.txt`). If it offers a framework dropdown, pick
-   "Other"/"Python" — don't let it treat this as Next.js.
-4. Add environment variables (Project Settings → Environment Variables):
+1. Go to https://render.com and sign up (GitHub login is easiest — it can
+   see your repos immediately).
+2. **New → Web Service**, connect your GitHub repo.
+3. Configure it:
+
+   | Field | Value |
+   |---|---|
+   | Root Directory | `backend` |
+   | Runtime | Python 3 |
+   | Build Command | `pip install -r requirements.txt` |
+   | Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+   | Instance Type | Free |
+
+4. Add environment variables (in the same setup form, or Environment tab
+   after creating the service):
 
    | Variable | Value |
    |---|---|
    | `NVIDIA_API_KEY` | your free key from build.nvidia.com |
-   | `NVIDIA_MODEL` | `meta/llama-3.3-70b-instruct` (or leave unset — that's the default) |
+   | `NVIDIA_MODEL` | `meta/llama-3.1-8b-instruct` (a small/fast model — see the note below on why size matters even off Vercel) |
    | `DATABASE_URL` | the `postgresql+psycopg://...` string from step 1 |
    | `CORS_ORIGINS` | leave blank for now — you'll come back and set this after step 3 |
 
-5. Deploy. Once it's live, note the URL, e.g. `https://vrutti-api.vercel.app`.
-6. Sanity check: open `https://vrutti-api.vercel.app/api/health` in a
-   browser — you should see `{"status":"ok"}`. If instead you get Vercel's
-   own 404 page (an "ID: xxx::xxx" error, not a small JSON `{"detail":"Not
-   Found"}`) on *every* path including `/api/health`, the build itself
-   succeeded but nothing is routing requests to it — check that
-   `backend/vercel.json` contains a `rewrites` entry sending everything to
-   `/api/index` (already included in this repo; if you forked before it was
-   added, pull the latest and redeploy). If you see a 500, check the
-   function logs in the Vercel dashboard (almost always a missing/incorrect
-   `DATABASE_URL`).
+5. Create the service. First deploy takes a couple of minutes.
+6. Once it's live, note the URL, e.g. `https://vrutti-api.onrender.com`.
+7. Sanity check: open `https://vrutti-api.onrender.com/api/health` in a
+   browser — you should see `{"status":"ok"}`. If you get a 500 or the
+   service fails to start, check the **Logs** tab in the Render dashboard —
+   the most common cause is a missing/incorrect `DATABASE_URL`.
 
-## 3. Deploy the frontend (`vrutti-web`)
+(`backend/vercel.json` and `backend/api/index.py` are Vercel-specific leftovers
+from an earlier deploy attempt — harmless to leave in the repo, safe to
+delete once you've confirmed Render is working. They aren't used by Render.)
 
-1. **Add New → Project** again, same GitHub repo, but this time set **Root
+## 3. Deploy the frontend (`vrutti-web`) — on Vercel
+
+1. In Vercel: **Add New → Project**, import your GitHub repo, and set **Root
    Directory** to `frontend`. Vercel will auto-detect Vite.
 2. Add one environment variable:
 
    | Variable | Value |
    |---|---|
-   | `VITE_API_BASE_URL` | `https://vrutti-api.vercel.app` (your backend URL from step 2) |
+   | `VITE_API_BASE_URL` | `https://vrutti-api.onrender.com` (your backend URL from step 2, **no trailing slash**) |
 
 3. Deploy. You'll get a URL like `https://vrutti-web.vercel.app`.
 
+   Vite bakes `VITE_API_BASE_URL` into the JS bundle at **build time**, not
+   read at runtime — if you ever change this variable later, you must
+   trigger a new deploy (Vercel → Deployments → ⋯ → Redeploy) for it to take
+   effect. A build from before the change will keep calling the old URL no
+   matter what the Environment Variables page currently shows.
+
 ## 4. Close the loop: allow the frontend to call the backend
 
-Go back to the **vrutti-api** project → Environment Variables, and set:
+Go back to the Render **vrutti-api** service → Environment, and set:
 
 | Variable | Value |
 |---|---|
 | `CORS_ORIGINS` | `https://vrutti-web.vercel.app` |
 
-Redeploy the backend project (Vercel → Deployments → ⋯ → Redeploy) so the
-new env var takes effect. Without this step, the browser will block API
-calls with a CORS error even though the backend itself is up.
+Save — Render redeploys automatically on an environment variable change.
+Without this step, the browser will block API calls with a CORS error even
+though the backend itself is up.
 
 ## 5. Try it
 
@@ -122,21 +141,22 @@ If step 2 hangs and then errors, see "Timeouts" below.
 
 ## Things that are genuinely worth knowing
 
-**Cold starts.** A serverless Python function that hasn't been hit in a
-while takes a beat (often 1-3s) to spin up before it even starts talking to
-the LLM. The first request after idle time will feel slower than the rest —
-this is normal serverless behavior, not a bug.
+**Cold starts.** Render's free tier spins a service down after about 15
+minutes of no traffic, and spinning back up on the next request can take
+30-60s. This is a real wait, but it's a one-time cost per idle period — once
+warm, requests are fast — and unlike Vercel's serverless timeout, it's not
+going to abort a slow-but-legitimate LLM call partway through.
 
-**Timeouts.** Model calls for resume parsing or fit evaluation can take
-several seconds — and free-tier inference can be slower and less
-predictable than a paid frontier API, especially under load. Vercel's Hobby
-(free) plan currently allows Python functions up to 60s via the
-`maxDuration` setting already in `backend/vercel.json` — that's enough
-headroom for any single call in this app under normal conditions. If your
-account's plan enforces a lower cap, or NVIDIA NIM is slow enough to hit
-even 60s, either upgrade the relevant plan tier or move the backend to a
-host built for longer-running Python processes (Render and Railway both
-have simple free tiers and don't impose the same per-request ceiling).
+**Timeouts.** Model calls for resume parsing, fit evaluation, or drafting
+can take anywhere from a couple of seconds to 30+ seconds — free-tier
+inference is slower and less predictable than a paid frontier API,
+especially under load, and forced structured/function-call output is a
+heavier code path than a plain chat reply. `NVIDIA_MODEL` defaults to a
+small, fast model for this reason; a bigger one will be more capable but
+slower and more likely to feel sluggish. The backend's own client-side
+timeout (`llm_client.py`) is 55s — generous, since Render doesn't impose a
+Vercel-style hard per-request ceiling, but still bounded so a genuinely
+stuck request fails with a readable error instead of hanging forever.
 
 **Tool-calling reliability.** Not every model in NVIDIA's free catalog
 reliably honors a forced tool/function call — if you switch `NVIDIA_MODEL`
@@ -145,9 +165,10 @@ expected response," that model likely doesn't support forced tool choice
 well. Check the model's page on build.nvidia.com for tool-calling support
 before switching, or revert to the default.
 
-**This isn't "set once and forget."** Every push to the branch Vercel is
-tracking triggers a new deployment automatically. If you don't want that,
-disconnect auto-deploy in the project's Git settings.
+**This isn't "set once and forget."** Every push to the branch each service
+is tracking triggers a new deployment automatically, on both Vercel and
+Render. If you don't want that, disconnect auto-deploy in each project's
+settings.
 
 **Local dev still uses SQLite by default** (`backend/.env`'s
 `DATABASE_URL`) — you don't need Neon or Vercel at all to run this on your

@@ -40,16 +40,15 @@ def get_client() -> openai.OpenAI:
                     "add a free key from https://build.nvidia.com/"
                 ),
             )
-        # The openai SDK's default timeout is ~10 minutes — far longer than
-        # Vercel's serverless function limit (60s on this project). Without an
-        # explicit shorter timeout, a slow NVIDIA response gets Vercel to kill
-        # the whole function first: a raw platform 504 with no CORS headers,
-        # which the browser reports as an opaque "Failed to fetch" instead of
-        # a readable error. 30s leaves real headroom inside the 60s budget for
-        # cold-start overhead and the rest of the request (DB write, JSON
-        # parsing) — 50s cut it too close and still lost the race in practice.
+        # The openai SDK's default timeout is ~10 minutes. On a short-lived
+        # serverless function that's dangerous (the platform can kill the
+        # whole process before our own code gets a chance to respond, which
+        # produces a raw platform error with no CORS headers instead of a
+        # readable one) — on a persistent host (Render) there's no such hard
+        # ceiling, but a bounded timeout is still good practice so a hung
+        # request fails cleanly instead of tying up the connection forever.
         _client = openai.OpenAI(
-            base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key, timeout=30.0
+            base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key, timeout=55.0
         )
     return _client
 
