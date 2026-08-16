@@ -61,15 +61,19 @@ export function ApplicationsPage() {
 
       {analytics && (
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {STAT_LABEL.map(({ key, label, suffix }) => (
-            <div key={key} className="rounded-2xl border border-ink-800 bg-ink-900/60 p-4">
-              <p className="font-display text-2xl font-bold text-ink-50">
-                {analytics[key]}
-                {suffix ?? ""}
-              </p>
-              <p className="mt-1 text-xs text-ink-400">{label}</p>
-            </div>
-          ))}
+          {STAT_LABEL.map(({ key, label, suffix }) => {
+            const raw = analytics[key];
+            const value = suffix === "%" ? Math.round(raw * 1000) / 10 : raw;
+            return (
+              <div key={key} className="rounded-2xl border border-ink-800 bg-ink-900/60 p-4">
+                <p className="font-display text-2xl font-bold text-ink-50">
+                  {value}
+                  {suffix ?? ""}
+                </p>
+                <p className="mt-1 text-xs text-ink-400">{label}</p>
+              </div>
+            );
+          })}
         </div>
       )}
 

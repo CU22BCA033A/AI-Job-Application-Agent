@@ -89,6 +89,10 @@ export function JobDetailPage() {
   }
 
   useEffect(() => {
+    setLoading(true);
+    setEditingResume(false);
+    setResumeDraft(null);
+    setCoverLetterDraft(null);
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -115,6 +119,8 @@ export function JobDetailPage() {
       setDocuments((prev) => [...prev, ...docs]);
       setJob((prev) => (prev ? { ...prev, status: "drafting" } : prev));
       setEditingResume(false);
+      setResumeDraft(null);
+      setCoverLetterDraft(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't generate drafts. Mind trying again?");
     } finally {
