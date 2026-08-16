@@ -16,11 +16,19 @@ class Settings(BaseSettings):
     # Swap nvidia_base_url to point at any other OpenAI-compatible provider.
     nvidia_api_key: str = ""
     nvidia_model: str = _DEFAULT_NVIDIA_MODEL
+    # Resume parsing asks the model to extract a large, deeply-nested profile
+    # (work history, skills, projects, achievements, ...) from raw text in one
+    # shot — a much harder structured-output task than a quick fit score or
+    # draft, and a small/fast model tends to respond with a technically valid
+    # but mostly-empty result rather than failing loudly. This only runs once
+    # per profile import, not on every request, so it can afford to default
+    # to the larger model even when nvidia_model is set to something faster.
+    nvidia_model_resume_parse: str = _DEFAULT_NVIDIA_MODEL
     nvidia_base_url: str = _DEFAULT_NVIDIA_BASE_URL
     database_url: str = "sqlite:///./vrutti.db"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    @field_validator("nvidia_model", mode="before")
+    @field_validator("nvidia_model", "nvidia_model_resume_parse", mode="before")
     @classmethod
     def _fallback_model_if_blank(cls, v: str | None) -> str:
         # An env var set to "" (as opposed to unset) still overrides the

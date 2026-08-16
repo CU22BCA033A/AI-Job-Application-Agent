@@ -173,6 +173,7 @@ Open http://localhost:5173.
 |---|---|---|
 | `backend/.env` | `NVIDIA_API_KEY` | Free key from build.nvidia.com — required for extraction/fit evaluation |
 | `backend/.env` | `NVIDIA_MODEL` | Defaults to `meta/llama-3.3-70b-instruct`; must support forced tool/function calling — check the model's page on build.nvidia.com before switching |
+| `backend/.env` | `NVIDIA_MODEL_RESUME_PARSE` | Model used only for resume parsing (defaults to the same as `NVIDIA_MODEL`). Worth keeping on a larger model even if `NVIDIA_MODEL` is set smaller/faster — extracting a whole structured profile in one shot is a harder task than a quick fit score, and it only runs once per profile import |
 | `backend/.env` | `NVIDIA_BASE_URL` | Defaults to NVIDIA NIM's endpoint; change only to point at a different OpenAI-compatible provider |
 | `backend/.env` | `DATABASE_URL` | Defaults to a local SQLite file; swap for Postgres when ready |
 | `backend/.env` | `CORS_ORIGINS` | Comma-separated origins allowed to call the API |

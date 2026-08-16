@@ -61,9 +61,15 @@ def call_structured_tool(
     tool_description: str,
     input_schema: dict[str, Any],
     max_tokens: int = 4096,
+    model: str | None = None,
 ) -> dict[str, Any]:
     """Force the model to respond via a single function call and return its
     parsed arguments dict.
+
+    `model` overrides the default `NVIDIA_MODEL` for this call — used by
+    resume parsing, which is a much harder one-shot extraction task than a
+    quick fit score and benefits from a larger model even when the default
+    is set to something fast for latency-sensitive calls.
 
     Provider failures (bad key, rate limit, network, upstream error) are
     translated into clean HTTPExceptions here — so an LLM-side failure
@@ -75,7 +81,7 @@ def call_structured_tool(
 
     try:
         response = client.chat.completions.create(
-            model=settings.nvidia_model,
+            model=model or settings.nvidia_model,
             max_tokens=max_tokens,
             messages=[
                 {"role": "system", "content": system},

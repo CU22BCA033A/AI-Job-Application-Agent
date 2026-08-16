@@ -2,14 +2,27 @@
 structured Profile shape, for the user to review and correct — never trusted blindly.
 """
 
+from app.config import get_settings
 from app.services.llm_client import call_structured_tool
 
+settings = get_settings()
+
 _SYSTEM = (
-    "You convert a resume's raw text into a structured profile record. Extract "
-    "only what is actually written — do not infer skills, dates, or achievements "
-    "that aren't stated. If a field is unclear or missing, leave it empty and add "
-    "a short note about it so the person can fill it in themselves. Preserve real "
-    "numbers/metrics exactly as written; never round or embellish them."
+    "You convert a resume's raw text into a structured profile record. Your #1 "
+    "failure mode is being lazy: leaving work_history, skills, or projects empty "
+    "or thin when the resume text clearly lists them. Before you finish, re-scan "
+    "the ENTIRE text for every section — a 'Skills' or 'Technical Skills' line "
+    "(often a dense comma/pipe-separated list of tools, languages, and "
+    "frameworks — split each one into its own skills[] entry), every internship "
+    "or work entry (even short/unpaid ones), every project with its own bullets, "
+    "and any tools/technologies named inside bullet points that aren't already "
+    "in the skills list. A resume that lists tools is not a resume with no "
+    "skills — extract every single one you can find as its own entry. "
+    "That said, extract only what is actually written — do not infer skills, "
+    "dates, or achievements that aren't stated. If a field is unclear or "
+    "missing, leave it empty and add a short note about it so the person can "
+    "fill it in themselves. Preserve real numbers/metrics exactly as written; "
+    "never round or embellish them."
 )
 
 _SCHEMA = {
@@ -127,5 +140,9 @@ def parse_resume_text(resume_text: str) -> dict:
         tool_name="record_parsed_profile",
         tool_description="Record the structured profile parsed from this resume.",
         input_schema=_SCHEMA,
-        max_tokens=4096,
+        max_tokens=8192,
+        # Runs once per profile import, not per request, so it can afford a
+        # larger/slower model than the app's default even when NVIDIA_MODEL
+        # is set to something fast — see the field's docstring in config.py.
+        model=settings.nvidia_model_resume_parse,
     )

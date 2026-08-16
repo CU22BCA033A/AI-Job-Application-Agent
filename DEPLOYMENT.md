@@ -84,6 +84,7 @@ the first time it connects.
    |---|---|
    | `NVIDIA_API_KEY` | your free key from build.nvidia.com |
    | `NVIDIA_MODEL` | `meta/llama-3.1-8b-instruct` (a small/fast model — see the note below on why size matters even off Vercel) |
+   | `NVIDIA_MODEL_RESUME_PARSE` | `meta/llama-3.3-70b-instruct` (deliberately bigger than `NVIDIA_MODEL` — resume parsing is a much harder one-shot extraction and only runs once per profile import, so it's worth the extra time) |
    | `DATABASE_URL` | the `postgresql+psycopg://...` string from step 1 |
    | `CORS_ORIGINS` | leave blank for now — you'll come back and set this after step 3 |
 
@@ -154,16 +155,21 @@ minutes of no traffic, and spinning back up on the next request can take
 warm, requests are fast — and unlike Vercel's serverless timeout, it's not
 going to abort a slow-but-legitimate LLM call partway through.
 
-**Timeouts.** Model calls for resume parsing, fit evaluation, or drafting
-can take anywhere from a couple of seconds to 30+ seconds — free-tier
-inference is slower and less predictable than a paid frontier API,
-especially under load, and forced structured/function-call output is a
-heavier code path than a plain chat reply. `NVIDIA_MODEL` defaults to a
-small, fast model for this reason; a bigger one will be more capable but
-slower and more likely to feel sluggish. The backend's own client-side
-timeout (`llm_client.py`) is 55s — generous, since Render doesn't impose a
-Vercel-style hard per-request ceiling, but still bounded so a genuinely
-stuck request fails with a readable error instead of hanging forever.
+**Timeouts.** Model calls for fit evaluation or drafting can take anywhere
+from a couple of seconds to 30+ seconds — free-tier inference is slower and
+less predictable than a paid frontier API, especially under load, and forced
+structured/function-call output is a heavier code path than a plain chat
+reply. That's why step 4 above sets `NVIDIA_MODEL` to a small/fast model —
+the code's own default is the larger 70B one, which is more capable but
+slower and more likely to feel sluggish on these frequent, interactive
+calls. Resume parsing is different: it's a much harder one-shot extraction
+task, but only runs once per profile import rather than on every request,
+so `NVIDIA_MODEL_RESUME_PARSE` is worth keeping on the larger model even
+when `NVIDIA_MODEL` is set smaller for everything else. The backend's own
+client-side timeout (`llm_client.py`) is 55s — generous, since Render
+doesn't impose a Vercel-style hard per-request ceiling, but still bounded
+so a genuinely stuck request fails with a readable error instead of hanging
+forever.
 
 **Tool-calling reliability.** Not every model in NVIDIA's free catalog
 reliably honors a forced tool/function call — if you switch `NVIDIA_MODEL`
