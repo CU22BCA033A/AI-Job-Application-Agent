@@ -94,6 +94,13 @@ the first time it connects.
    service fails to start, check the **Logs** tab in the Render dashboard —
    the most common cause is a missing/incorrect `DATABASE_URL`.
 
+`backend/.python-version` pins the Python version to 3.11 so Render picks a
+build with ready-made wheels for this repo's dependencies. If a build still
+fails trying to compile `pydantic-core` from source (a wall of Rust/maturin
+output, usually ending in a PyPI network error), Render didn't pick up that
+file — add `PYTHON_VERSION` = `3.11.9` as an environment variable on the
+service directly and redeploy.
+
 (`backend/vercel.json` and `backend/api/index.py` are Vercel-specific leftovers
 from an earlier deploy attempt — harmless to leave in the repo, safe to
 delete once you've confirmed Render is working. They aren't used by Render.)
