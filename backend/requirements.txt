@@ -7,6 +7,11 @@ sqlalchemy==2.0.35
 pydantic==2.9.2
 pydantic-settings==2.5.2
 openai==1.54.4
+# openai 1.54.4 still calls httpx.Client(proxies=...) internally, an argument
+# httpx 0.28 removed — pin below that so the deployed build doesn't silently
+# resolve an incompatible httpx and crash every LLM call with
+# "Client.__init__() got an unexpected keyword argument 'proxies'".
+httpx<0.28
 python-dotenv==1.0.1
 python-multipart==0.0.12
 pypdf==5.0.1
