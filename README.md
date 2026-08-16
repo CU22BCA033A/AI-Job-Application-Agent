@@ -190,6 +190,15 @@ function. Takes about 15 minutes the first time.
 
 ## Design notes
 
+- **Resume parsing runs a dedicated second pass just for skills.** The main
+  extraction call handles the whole profile (work history, education,
+  projects, ...) in one shot — a dense "Technical Skills" list is the part
+  most likely to get skimmed rather than fully transcribed inside that big
+  a call, so a small, single-purpose follow-up call extracts skills alone
+  and the results are merged in (deduped), not trusted from either call in
+  isolation. If the follow-up call fails for any reason, the import still
+  succeeds with whatever the main pass found — it's a best-effort addition,
+  not a new point of failure.
 - **Drafter/Reviewer are separate agent calls, not one merged prompt.** The
   Reviewer's system prompt explicitly tells it "you did NOT write these
   documents" — it only ever fact-checks against the stored profile and
