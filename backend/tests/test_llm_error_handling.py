@@ -60,6 +60,31 @@ def test_job_creation_surfaces_clean_error_on_bad_key(client, monkeypatch):
     assert "rejected" in r.json()["detail"].lower()
 
 
+def test_timeout_becomes_504_not_generic_connection_error(monkeypatch):
+    """APITimeoutError subclasses APIConnectionError, so it must be caught
+    ahead of the generic connection-error handler — otherwise a slow model
+    gets the misleading "check your network" message instead of a real
+    "it was slow, try again" one.
+    """
+    request = httpx.Request("POST", "https://integrate.api.nvidia.com/v1/chat/completions")
+    exc = openai.APITimeoutError(request)
+    monkeypatch.setattr("app.services.llm_client.get_client", lambda: _fake_client_raising(exc))
+
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as exc_info:
+        call_structured_tool(
+            system="sys",
+            user_message="hi",
+            tool_name="t",
+            tool_description="d",
+            input_schema={"type": "object", "properties": {}},
+        )
+
+    assert exc_info.value.status_code == 504
+    assert "took too long" in exc_info.value.detail.lower()
+
+
 def _fake_tool_call_response(tool_name: str, arguments: dict):
     function = type("F", (), {"name": tool_name, "arguments": json.dumps(arguments)})()
     tool_call = type("TC", (), {"function": function})()

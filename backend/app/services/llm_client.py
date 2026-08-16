@@ -40,7 +40,16 @@ def get_client() -> openai.OpenAI:
                     "add a free key from https://build.nvidia.com/"
                 ),
             )
-        _client = openai.OpenAI(base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key)
+        # The openai SDK's default timeout is ~10 minutes — far longer than
+        # Vercel's serverless function limit (60s on this project). Without an
+        # explicit shorter timeout, a slow NVIDIA response gets Vercel to kill
+        # the whole function first: a raw platform 504 with no CORS headers,
+        # which the browser reports as an opaque "Failed to fetch" instead of
+        # a readable error. 50s leaves headroom for the rest of the request
+        # (DB write, JSON parsing) inside the 60s budget.
+        _client = openai.OpenAI(
+            base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key, timeout=50.0
+        )
     return _client
 
 
@@ -93,6 +102,17 @@ def call_structured_tool(
         raise HTTPException(
             status_code=429,
             detail="Hit the NVIDIA NIM rate limit — wait a moment and try again.",
+        ) from exc
+    except openai.APITimeoutError as exc:
+        # Must come before APIConnectionError — APITimeoutError subclasses it,
+        # and "the model was slow" deserves a different message than "check
+        # your network".
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                "The model took too long to respond — NVIDIA's free tier can be slow, "
+                "especially on a cold start for a given model. Try again in a moment."
+            ),
         ) from exc
     except openai.APIConnectionError as exc:
         raise HTTPException(
