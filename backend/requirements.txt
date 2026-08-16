@@ -1,8 +1,13 @@
-# Runtime dependencies — installed for local `uvicorn` runs AND for the
-# Vercel Python serverless function. Keep this lean: anything added here
-# gets bundled into the deployed function, so dev/test-only tools belong
-# in requirements-dev.txt instead.
+# Runtime dependencies — installed for local dev, the Render web service,
+# and the (now-unused) Vercel Python function. Keep this lean: anything
+# added here gets bundled into the deployed service, so dev/test-only tools
+# belong in requirements-dev.txt instead.
 fastapi==0.115.0
+# Render (and local dev) run this app directly via `uvicorn app.main:app`, so
+# uvicorn has to be a real runtime dependency here, not just in
+# requirements-dev.txt — Vercel's Python runtime didn't need it (it invoked
+# the ASGI app itself), which is why it used to live dev-only.
+uvicorn[standard]==0.32.0
 sqlalchemy==2.0.35
 pydantic==2.9.2
 pydantic-settings==2.5.2
