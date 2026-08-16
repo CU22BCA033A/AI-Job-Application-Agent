@@ -45,10 +45,11 @@ def get_client() -> openai.OpenAI:
         # explicit shorter timeout, a slow NVIDIA response gets Vercel to kill
         # the whole function first: a raw platform 504 with no CORS headers,
         # which the browser reports as an opaque "Failed to fetch" instead of
-        # a readable error. 50s leaves headroom for the rest of the request
-        # (DB write, JSON parsing) inside the 60s budget.
+        # a readable error. 30s leaves real headroom inside the 60s budget for
+        # cold-start overhead and the rest of the request (DB write, JSON
+        # parsing) — 50s cut it too close and still lost the race in practice.
         _client = openai.OpenAI(
-            base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key, timeout=50.0
+            base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key, timeout=30.0
         )
     return _client
 
